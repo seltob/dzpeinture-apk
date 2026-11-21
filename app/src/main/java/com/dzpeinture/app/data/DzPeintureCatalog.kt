@@ -146,24 +146,40 @@ object DzPeintureData {
     )
 
     val shades = listOf(
+        // Salon (9 teintes)
         PaintShade("DZP-101", "Vanilla Latte", "Salon", 0xFFE6D6BE, "SOIE SATINÉ"),
         PaintShade("DZP-102", "Blanc Pur", "Salon", 0xFFF8F9FA, "VELOURS MAT"),
         PaintShade("DZP-103", "Greige Chic", "Salon", 0xFFC9C0B5, "SOIE SATINÉ"),
         PaintShade("DZP-104", "Lin Naturel", "Salon", 0xFFEAE2D6, "VELOURS MAT"),
         PaintShade("DZP-105", "Crème Ivoire", "Salon", 0xFFF4ECDD, "SOIE SATINÉ"),
+        PaintShade("DZP-115", "Sable d'Or", "Salon", 0xFFDFC7A0, "SOIE SATINÉ"),
+        PaintShade("DZP-116", "Taupe Doux", "Salon", 0xFFB8ACA0, "VELOURS MAT"),
+        PaintShade("DZP-117", "Blanc Cassé", "Salon", 0xFFF2EFE9, "SOIE SATINÉ"),
+        PaintShade("DZP-118", "Cappuccino Clair", "Salon", 0xFFD2BFA8, "SOIE SATINÉ"),
+        // Chambre (8 teintes)
         PaintShade("DZP-106", "Breeze", "Chambre", 0xFFD2E2E5, "VELOURS MAT"),
         PaintShade("DZP-107", "Gris Perle", "Chambre", 0xFFD9DDE0, "VELOURS MAT"),
         PaintShade("DZP-108", "Vert Sauge", "Chambre", 0xFFB8C7B8, "VELOURS MAT"),
         PaintShade("DZP-109", "Rose Poudré", "Chambre", 0xFFE8D1D1, "SOIE SATINÉ"),
         PaintShade("DZP-110", "Bleu Nuit", "Chambre", 0xFF1F3652, "VELOURS MAT"),
+        PaintShade("DZP-119", "Lavande Douce", "Chambre", 0xFFD7D2E2, "VELOURS MAT"),
+        PaintShade("DZP-120", "Bleu Glacier", "Chambre", 0xFFC5DAE8, "VELOURS MAT"),
+        PaintShade("DZP-121", "Vert Olive Clair", "Chambre", 0xFFC5CCB6, "VELOURS MAT"),
+        // Cuisine / SDB (7 teintes)
         PaintShade("DZP-111", "Ciel d'Alger", "Cuisine / SDB", 0xFF8BBCD4, "CRISTAL LAQUE"),
         PaintShade("DZP-112", "Blanc Neige Laqué", "Cuisine / SDB", 0xFFFDFEFF, "CRISTAL LAQUE"),
         PaintShade("DZP-113", "Menthe Douce", "Cuisine / SDB", 0xFFCDE3D8, "CRISTAL LAQUE"),
         PaintShade("DZP-114", "Anthracite Pro", "Cuisine / SDB", 0xFF3A414A, "CRISTAL LAQUE"),
+        PaintShade("DZP-122", "Gris Aluminium", "Cuisine / SDB", 0xFFC4C9CE, "CRISTAL LAQUE"),
+        PaintShade("DZP-123", "Turquoise Clair", "Cuisine / SDB", 0xFFAAD9DC, "CRISTAL LAQUE"),
+        PaintShade("DZP-124", "Beige Satiné", "Cuisine / SDB", 0xFFE5DAC8, "CRISTAL LAQUE"),
+        // Façade (6 teintes)
         PaintShade("DZP-201", "Sable Sahara", "Façade", 0xFFDCC39E, "IMPER FAÇADE"),
         PaintShade("DZP-202", "Pierre Calcaire", "Façade", 0xFFE5DFD3, "IMPER FAÇADE"),
         PaintShade("DZP-203", "Terracotta Douce", "Façade", 0xFFC97B5B, "IMPER FAÇADE"),
-        PaintShade("DZP-204", "Blanc Méditerranée", "Façade", 0xFFF5F4EF, "IMPER FAÇADE")
+        PaintShade("DZP-204", "Blanc Méditerranée", "Façade", 0xFFF5F4EF, "IMPER FAÇADE"),
+        PaintShade("DZP-205", "Ocre Doré", "Façade", 0xFFD6A76C, "IMPER FAÇADE"),
+        PaintShade("DZP-206", "Gris Béton Chic", "Façade", 0xFFB8BDC2, "IMPER FAÇADE")
     )
 
     val stores = listOf(
