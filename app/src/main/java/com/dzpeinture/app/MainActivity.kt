@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.Engineering
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -53,6 +54,7 @@ import com.dzpeinture.app.data.DzPeintureData
 import com.dzpeinture.app.data.PaintShade
 import com.dzpeinture.app.ui.screens.CatalogueOrderScreen
 import com.dzpeinture.app.ui.screens.DevisScreen
+import com.dzpeinture.app.ui.screens.PaintersScreen
 import com.dzpeinture.app.ui.screens.PaletteScreen
 import com.dzpeinture.app.ui.screens.StoresScreen
 import com.dzpeinture.app.ui.theme.DzNavy
@@ -88,7 +90,8 @@ fun DzPeintureApp() {
     val tabs = listOf(
         NavTab("Devis", Icons.Default.Calculate),
         NavTab("Palette", Icons.Default.Palette),
-        NavTab("Commander", Icons.Default.ShoppingCart),
+        NavTab("Peintres", Icons.Default.Engineering),
+        NavTab("Panier", Icons.Default.ShoppingCart),
         NavTab("Magasins", Icons.Default.LocationOn)
     )
 
@@ -97,14 +100,33 @@ fun DzPeintureApp() {
         context.startActivity(intent)
     }
 
+    fun normalizeDzWhatsAppPhone(phone: String): String {
+        val digits = phone.filter { it.isDigit() }
+        return when {
+            digits.startsWith("213") -> digits
+            digits.startsWith("0") && digits.length >= 9 -> "213" + digits.drop(1)
+            else -> DzPeintureData.WHATSAPP_NUMBER
+        }
+    }
+
     fun openWhatsApp(message: String) {
         val encoded = Uri.encode(message)
         openUrl("https://wa.me/${DzPeintureData.WHATSAPP_NUMBER}?text=$encoded")
     }
 
-    fun callDirect() {
-        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${DzPeintureData.PHONE_ORDERS}"))
+    fun openWhatsAppToPhone(phone: String, message: String) {
+        val waNum = normalizeDzWhatsAppPhone(phone)
+        val encoded = Uri.encode(message)
+        openUrl("https://wa.me/$waNum?text=$encoded")
+    }
+
+    fun callPhone(phone: String) {
+        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
         context.startActivity(intent)
+    }
+
+    fun callDirect() {
+        callPhone(DzPeintureData.PHONE_ORDERS)
     }
 
     Scaffold(
@@ -138,7 +160,7 @@ fun DzPeintureApp() {
                         selected = currentTab == index,
                         onClick = { currentTab = index },
                         icon = {
-                            if (index == 2 && totalCartItems > 0) {
+                            if (index == 3 && totalCartItems > 0) {
                                 BadgedBox(badge = { Badge { Text(totalCartItems.toString()) } }) {
                                     Icon(tab.icon, contentDescription = tab.label)
                                 }
@@ -169,7 +191,7 @@ fun DzPeintureApp() {
                                 extraKg = (existing?.extraKg ?: 0) + pack.extraKgCount
                             )
                         }
-                        currentTab = 2
+                        currentTab = 3
                         scope.launch {
                             snackbarHostState.showSnackbar("Devis ajouté au panier !")
                         }
@@ -181,14 +203,22 @@ fun DzPeintureApp() {
                     selectedShade = selectedShade,
                     onSelectShadeForOrder = { shade ->
                         selectedShade = shade
-                        currentTab = 2
+                        currentTab = 3
                         scope.launch {
                             snackbarHostState.showSnackbar("Teinte ${shade.name} sélectionnée !")
                         }
                     }
                 )
 
-                2 -> CatalogueOrderScreen(
+                2 -> PaintersScreen(
+                    onCallPhone = ::callPhone,
+                    onWhatsAppPhone = ::openWhatsAppToPhone,
+                    onShowMessage = { msg ->
+                        scope.launch { snackbarHostState.showSnackbar(msg) }
+                    }
+                )
+
+                3 -> CatalogueOrderScreen(
                     cart = cart,
                     selectedShade = selectedShade,
                     onUpdateCart = { product, buckets, extraKg ->
@@ -203,7 +233,7 @@ fun DzPeintureApp() {
                     onCallDirect = ::callDirect
                 )
 
-                3 -> StoresScreen(
+                4 -> StoresScreen(
                     onOpenUrl = ::openUrl,
                     onCallDirect = ::callDirect,
                     onOpenWhatsApp = ::openWhatsApp

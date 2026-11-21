@@ -42,12 +42,13 @@ jobs:
       - name: Publier le lien direct de téléchargement (GitHub Release)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.0.0
-          name: DZpeinture v2.0.0 (Android APK)
+          tag_name: v3.0.0
+          name: DZpeinture v3.0.0 (Android APK)
           body: |
             Application Android officielle **DZpeinture** (Alger : Oued Romane • Chéraga • Bachdjerrah).
             - Calculateur de Devis exact (Seaux 18/20 kg + détail 1 kg)
             - Palette 30 teintes Machine à Teinter + Simulateur couleur sur photo
+            - Annuaire Peintres Pro Vérifiés DZpeinture avec Étoiles ★, Avis & Inscription gratuite
             - Commande directe WhatsApp & Appel + GPS 3 magasins
           files: DZpeinture.apk
           make_latest: true
