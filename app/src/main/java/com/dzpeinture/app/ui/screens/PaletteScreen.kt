@@ -43,6 +43,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,6 +53,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -73,8 +75,15 @@ import androidx.compose.ui.window.DialogProperties
 import com.dzpeinture.app.data.DzPeintureData
 import com.dzpeinture.app.data.DzPeintureData.contrastText
 import com.dzpeinture.app.data.PaintShade
+import com.dzpeinture.app.data.PaletteRepository
 import com.dzpeinture.app.ui.theme.DzEmerald
 import com.dzpeinture.app.ui.theme.DzNavy
+
+private enum class PaletteSource(val label: String) {
+    TENDANCES("Tendances"),
+    NCS("Code NCS"),
+    SITE("Nuancier Site")
+}
 
 @Composable
 fun PaletteScreen(
@@ -82,10 +91,20 @@ fun PaletteScreen(
     onSelectShadeForOrder: (PaintShade) -> Unit
 ) {
     val context = LocalContext.current
-    val rooms = listOf("Toutes", "Salon", "Chambre", "Cuisine / SDB", "Façade")
-    var activeRoom by remember { mutableStateOf("Toutes") }
+    var activeSource by remember { mutableStateOf(PaletteSource.NCS) }
+    var activeFilter by remember { mutableStateOf("Toutes") }
     var searchQuery by remember { mutableStateOf("") }
     var previewShade by remember { mutableStateOf<PaintShade?>(null) }
+
+    var ncsList by remember { mutableStateOf<List<PaintShade>>(emptyList()) }
+    var siteList by remember { mutableStateOf<List<PaintShade>>(emptyList()) }
+    var isLoadingAssets by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        ncsList = PaletteRepository.loadNcsPalette(context)
+        siteList = PaletteRepository.loadSitePalette(context)
+        isLoadingAssets = false
+    }
 
     // Simulateur couleur sur photo
     var showSimulator by remember { mutableStateOf(false) }
@@ -118,16 +137,34 @@ fun PaletteScreen(
         }
     }
 
-    val filtered = remember(activeRoom, searchQuery) {
-        val byRoom = if (activeRoom == "Toutes") DzPeintureData.shades
-        else DzPeintureData.shades.filter { it.roomTag == activeRoom }
-        val q = searchQuery.trim().lowercase()
-        if (q.isEmpty()) byRoom
-        else byRoom.filter {
-            it.name.lowercase().contains(q) ||
-                it.code.lowercase().contains(q) ||
-                it.recommendedFinish.lowercase().contains(q)
+    val currentSourceList = remember(activeSource, ncsList, siteList) {
+        when (activeSource) {
+            PaletteSource.TENDANCES -> DzPeintureData.shades
+            PaletteSource.NCS -> ncsList
+            PaletteSource.SITE -> siteList
         }
+    }
+
+    val filterOptions = remember(activeSource, currentSourceList) {
+        when (activeSource) {
+            PaletteSource.TENDANCES -> listOf("Toutes", "Salon", "Chambre", "Cuisine / SDB", "Façade")
+            PaletteSource.NCS -> listOf("Toutes") + currentSourceList.map { it.roomTag }.distinct()
+            PaletteSource.SITE -> listOf("Toutes", "LEOMIX PRIME", "LEOMIX 1000", "LEOMIX DECO", "LEOMIX 260")
+        }
+    }
+
+    val filtered = remember(currentSourceList, activeFilter, searchQuery) {
+        val q = searchQuery.trim().lowercase()
+        val byFilter = if (activeFilter == "Toutes") currentSourceList
+        else currentSourceList.filter { it.roomTag == activeFilter }
+
+        val res = if (q.isEmpty()) byFilter
+        else byFilter.filter {
+            it.code.lowercase().contains(q) ||
+                it.name.lowercase().contains(q) ||
+                it.roomTag.lowercase().contains(q)
+        }
+        res
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -142,22 +179,37 @@ fun PaletteScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Palette Machine à Teinter (${DzPeintureData.shades.size})",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = DzNavy
-                    )
-                    Text(
-                        text = "Testez une couleur sur votre mur ou en plein écran.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                Text(
+                    text = "Nuancier Officiel (${filtered.size} teintes)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = DzNavy
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Sélecteur de palette : Code NCS | Nuancier Site (3820) | Tendances
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                PaletteSource.entries.forEach { src ->
+                    val countLabel = when (src) {
+                        PaletteSource.TENDANCES -> "${src.label} (${DzPeintureData.shades.size})"
+                        PaletteSource.NCS -> "${src.label} (${ncsList.size})"
+                        PaletteSource.SITE -> "${src.label} (${siteList.size})"
+                    }
+                    FilterChip(
+                        selected = activeSource == src,
+                        onClick = {
+                            activeSource = src
+                            activeFilter = "Toutes"
+                        },
+                        label = { Text(countLabel, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(6.dp))
 
             // Boutons Simulateur Photo (Caméra / Galerie)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -165,20 +217,20 @@ fun PaletteScreen(
                     onClick = { cameraLauncher.launch(null) },
                     colors = ButtonDefaults.buttonColors(containerColor = DzNavy),
                     shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(17.dp))
                     Spacer(Modifier.width(6.dp))
                     Text("Photo du mur", fontWeight = FontWeight.SemiBold, maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = { galleryLauncher.launch("image/*") },
                     shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(17.dp))
                     Spacer(Modifier.width(6.dp))
                     Text("Galerie", fontWeight = FontWeight.SemiBold, maxLines = 1)
                 }
@@ -189,14 +241,21 @@ fun PaletteScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Rechercher (ex: Vanilla, Breeze, DZP-101...)") },
+                placeholder = { Text("Code NCS (S 1005-Y20R), LPC 0972, Vanilla...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Close, contentDescription = "Effacer")
+                        }
+                    }
+                },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
 
             Row(
                 modifier = Modifier
@@ -204,87 +263,93 @@ fun PaletteScreen(
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                rooms.forEach { room ->
+                filterOptions.forEach { opt ->
                     FilterChip(
-                        selected = activeRoom == room,
-                        onClick = { activeRoom = room },
-                        label = { Text(room) }
+                        selected = activeFilter == opt,
+                        onClick = { activeFilter = opt },
+                        label = { Text(opt) }
                     )
                 }
             }
         }
 
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(filtered, key = { it.code }) { shade ->
-                val isSelected = selectedShade?.code == shade.code
-                val swatchColor = Color(shade.hex)
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 1.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(
-                            if (isSelected) Modifier.border(2.dp, DzEmerald, RoundedCornerShape(16.dp))
-                            else Modifier
-                        )
-                        .clickable { previewShade = shade }
-                ) {
-                    Column {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(100.dp)
-                                .background(swatchColor)
-                                .padding(10.dp)
-                        ) {
-                            Text(
-                                text = shade.code,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = swatchColor.contrastText(),
-                                modifier = Modifier.align(Alignment.TopStart)
+        if (isLoadingAssets && filtered.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = DzNavy)
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                contentPadding = PaddingValues(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(filtered, key = { "${it.roomTag}_${it.code}_${it.hex}" }) { shade ->
+                    val isSelected = selectedShade?.code == shade.code
+                    val swatchColor = Color(shade.hex)
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 1.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(
+                                if (isSelected) Modifier.border(2.dp, DzEmerald, RoundedCornerShape(14.dp))
+                                else Modifier
                             )
-                            if (isSelected) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(26.dp)
-                                        .clip(CircleShape)
-                                        .background(DzEmerald)
-                                        .align(Alignment.TopEnd),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Default.Check,
-                                        contentDescription = "Sélectionnée",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(16.dp)
-                                    )
+                            .clickable { previewShade = shade }
+                    ) {
+                        Column {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(92.dp)
+                                    .background(swatchColor)
+                                    .padding(9.dp)
+                            ) {
+                                Text(
+                                    text = shade.code,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = swatchColor.contrastText(),
+                                    modifier = Modifier.align(Alignment.TopStart)
+                                )
+                                if (isSelected) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(DzEmerald)
+                                            .align(Alignment.TopEnd),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = "Sélectionnée",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                    }
                                 }
                             }
-                        }
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                text = shade.name,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                text = "${shade.roomTag} • ${shade.recommendedFinish}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text(
+                                    text = shade.name,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    text = shade.recommendedFinish,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
                 }
@@ -322,8 +387,9 @@ fun PaletteScreen(
                 ) {
                     Text(
                         text = shade.code,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = fgColor.copy(alpha = 0.85f)
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = fgColor.copy(alpha = 0.9f)
                     )
                     Text(
                         text = shade.name,
@@ -333,7 +399,7 @@ fun PaletteScreen(
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = "Aperçu plein écran • Idéal ${shade.roomTag}",
+                        text = "${shade.roomTag} • ${shade.recommendedFinish}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = fgColor.copy(alpha = 0.85f)
                     )
@@ -348,13 +414,13 @@ fun PaletteScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "Finition conseillée : ${shade.recommendedFinish}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
+                            text = "Code Machine à Teinter : ${shade.code}",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
                             color = DzNavy
                         )
                         Text(
-                            text = "Préparée en 3 min à la machine à teinter DZpeinture.",
+                            text = "Préparée sur place en 3 min dans nos 3 magasins DZpeinture.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -397,6 +463,11 @@ fun PaletteScreen(
     if (showSimulator && wallBitmap != null) {
         val bmp = wallBitmap!!
         val tintColor = Color(simShade.hex)
+        val simPaletteStrip = remember(activeSource, ncsList, filtered) {
+            if (filtered.isNotEmpty()) filtered.take(60)
+            else if (ncsList.isNotEmpty()) ncsList.take(60)
+            else DzPeintureData.shades
+        }
         Dialog(
             onDismissRequest = { showSimulator = false },
             properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -406,7 +477,6 @@ fun PaletteScreen(
                     .fillMaxSize()
                     .background(Color(0xFF111827))
             ) {
-                // Zone Photo + Teinte réaliste
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -430,7 +500,6 @@ fun PaletteScreen(
                         }
                     }
 
-                    // Boutons haut
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -444,7 +513,7 @@ fun PaletteScreen(
                             shape = RoundedCornerShape(20.dp)
                         ) {
                             Text(
-                                text = if (showOriginal) "AVANT (Original)" else "APRÈS : ${simShade.name}",
+                                text = if (showOriginal) "AVANT (Original)" else "${simShade.code} • ${simShade.name}",
                                 color = Color.White,
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold,
@@ -462,7 +531,6 @@ fun PaletteScreen(
                     }
                 }
 
-                // Panneau de contrôle bas
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
@@ -501,12 +569,12 @@ fun PaletteScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
                         ) {
-                            items(DzPeintureData.shades, key = { it.code }) { sh ->
+                            items(simPaletteStrip, key = { "${it.roomTag}_${it.code}" }) { sh ->
                                 val active = sh.code == simShade.code
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     modifier = Modifier
-                                        .width(64.dp)
+                                        .width(68.dp)
                                         .clickable {
                                             simShade = sh
                                             showOriginal = false
@@ -525,7 +593,7 @@ fun PaletteScreen(
                                     )
                                     Spacer(Modifier.height(3.dp))
                                     Text(
-                                        text = sh.name,
+                                        text = sh.code,
                                         style = MaterialTheme.typography.labelSmall,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
@@ -546,7 +614,7 @@ fun PaletteScreen(
                         ) {
                             Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Commander ${simShade.name} (${simShade.code})", fontWeight = FontWeight.Bold)
+                            Text("Commander ${simShade.code}", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
