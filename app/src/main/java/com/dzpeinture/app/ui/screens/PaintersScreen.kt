@@ -388,7 +388,7 @@ private fun PainterReviewsDialog(
     onSubmitReview: (String, Int, String) -> Unit
 ) {
     var author by remember { mutableStateOf("") }
-    var rating by remember { mutableIntStateOf(5) }
+    var rating by remember { mutableIntStateOf(0) }
     var comment by remember { mutableStateOf("") }
 
     AlertDialog(
@@ -411,19 +411,6 @@ private fun PainterReviewsDialog(
                 item {
                     Text("Donner votre avis sur ce peintre :", fontWeight = FontWeight.Bold, color = DzNavy)
                     Spacer(Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
-                        (1..5).forEach { star ->
-                            Icon(
-                                imageVector = if (star <= rating) Icons.Default.Star else Icons.Default.StarBorder,
-                                contentDescription = "$star étoiles",
-                                tint = DzGold,
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clickable { rating = star }
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(6.dp))
                     OutlinedTextField(
                         value = author,
                         onValueChange = { author = it },
@@ -440,20 +427,44 @@ private fun PainterReviewsDialog(
                         maxLines = 4,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = if (rating == 0) "Note obligatoire (touchez de 1 à 5 étoiles) *" else "Votre note : $rating / 5 ★",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (rating == 0) Color(0xFFDC2626) else DzEmerald
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
+                        (1..5).forEach { star ->
+                            Icon(
+                                imageVector = if (star <= rating) Icons.Default.Star else Icons.Default.StarBorder,
+                                contentDescription = "$star étoiles",
+                                tint = if (star <= rating) DzGold else Color(0xFF9CA3AF),
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clickable { rating = star }
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
                     Button(
                         onClick = {
-                            if (comment.isNotBlank()) {
+                            if (rating >= 1 && comment.isNotBlank()) {
                                 onSubmitReview(author.ifBlank { "Client Alger" }, rating, comment.trim())
                                 comment = ""
+                                rating = 0
                             }
                         },
-                        enabled = comment.isNotBlank(),
+                        enabled = rating >= 1 && comment.isNotBlank(),
                         colors = ButtonDefaults.buttonColors(containerColor = DzEmerald),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Publier mon avis ($rating ★)", fontWeight = FontWeight.Bold)
+                        Text(
+                            text = if (rating >= 1) "Publier mon avis ($rating ★)" else "Choisissez au moins 1 étoile ★",
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                     Spacer(Modifier.height(10.dp))
                     HorizontalDivider()

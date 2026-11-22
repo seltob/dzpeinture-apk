@@ -2,6 +2,7 @@ package com.dzpeinture.app.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -60,6 +62,8 @@ import com.dzpeinture.app.ui.theme.DzNavy
 fun CatalogueOrderScreen(
     cart: Map<String, CartEntry>,
     selectedShade: PaintShade?,
+    onOpenPalette: () -> Unit,
+    onResetToWhite: () -> Unit,
     onUpdateCart: (DzProduct, Int, Int) -> Unit,
     onClearCart: () -> Unit,
     onSendOrderWhatsApp: (String) -> Unit,
@@ -75,43 +79,69 @@ fun CatalogueOrderScreen(
         "Retrait Bachdjerrah",
         "Livraison Alger"
     )
-    val totalDa = cart.values.sumOf { it.subtotalDa }
+    val tintSupplement = selectedShade?.supplementPerKgDa ?: 0
+    val totalDa = cart.values.sumOf { it.subtotalDa(tintSupplement) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (selectedShade != null) {
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+        // Bloc choix couleur depuis la Palette directement dans le Panier
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(34.dp)
+                                .size(38.dp)
                                 .clip(CircleShape)
-                                .background(Color(selectedShade.hex))
+                                .background(Color(selectedShade?.hex ?: 0xFFF8F9FA))
+                                .border(1.dp, Color(0xFFD1D5DB), CircleShape)
                         )
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Teinte sélectionnée : ${selectedShade.name}",
+                                text = if (selectedShade == null) "Couleur : Blanc d'origine"
+                                else "Teinte : ${selectedShade.code} • ${selectedShade.name}",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = DzNavy
                             )
                             Text(
-                                text = "Code ${selectedShade.code} • Machine à teinter DZpeinture",
+                                text = if (tintSupplement == 0) "Aucun supplément (+0 DA/kg)"
+                                else "Supplément teinte : +${DzPeintureData.formatDa(tintSupplement)}/kg (sur finitions)",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                fontWeight = FontWeight.SemiBold,
+                                color = DzEmerald
                             )
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        Button(
+                            onClick = onOpenPalette,
+                            colors = ButtonDefaults.buttonColors(containerColor = DzNavy),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1.4f)
+                        ) {
+                            Icon(Icons.Default.Palette, contentDescription = null, modifier = Modifier.size(17.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Choisir dans la Palette", fontWeight = FontWeight.SemiBold)
+                        }
+                        if (selectedShade != null) {
+                            OutlinedButton(
+                                onClick = onResetToWhite,
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.weight(0.8f)
+                            ) {
+                                Text("Blanc")
+                            }
                         }
                     }
                 }
@@ -120,6 +150,10 @@ fun CatalogueOrderScreen(
 
         items(DzPeintureData.products, key = { it.id }) { product ->
             val entry = cart[product.id] ?: CartEntry(product, 0, 0)
+            val effectiveSupp = if (product.isTintable) tintSupplement else 0
+            val effectiveBucketPrice = product.bucketPriceDa + effectiveSupp * product.bucketWeightKg
+            val effectiveKgPrice = product.pricePerKgDa + effectiveSupp
+
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -158,11 +192,18 @@ fun CatalogueOrderScreen(
                             )
                             Spacer(Modifier.height(6.dp))
                             Text(
-                                text = "Seau ${product.bucketWeightKg} kg : ${DzPeintureData.formatDa(product.bucketPriceDa)}  •  1 kg : ${DzPeintureData.formatDa(product.pricePerKgDa)}",
+                                text = "Seau ${product.bucketWeightKg} kg : ${DzPeintureData.formatDa(effectiveBucketPrice)}  •  1 kg : ${DzPeintureData.formatDa(effectiveKgPrice)}",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = DzEmerald
                             )
+                            if (effectiveSupp > 0) {
+                                Text(
+                                    text = "(Base ${DzPeintureData.formatDa(product.pricePerKgDa)} + teinte ${DzPeintureData.formatDa(effectiveSupp)}/kg)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
 
@@ -223,9 +264,9 @@ fun CatalogueOrderScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     } else {
-                        cart.values.filter { it.subtotalDa > 0 }.forEach { item ->
+                        cart.values.filter { it.subtotalDa(tintSupplement) > 0 }.forEach { item ->
                             val qtyLabel = buildList {
-                                if (item.buckets > 0) add("${item.buckets} seau(x) ${item.product.bucketWeightKg}kg")
+                                if (item.buckets > 0) add("${item.buckets} pot(s) ${item.product.bucketWeightKg}kg")
                                 if (item.extraKg > 0) add("${item.extraKg} kg")
                             }.joinToString(" + ")
                             Row(
@@ -235,7 +276,11 @@ fun CatalogueOrderScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text("${item.product.name} ($qtyLabel)", style = MaterialTheme.typography.bodySmall)
-                                Text(DzPeintureData.formatDa(item.subtotalDa), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                Text(
+                                    DzPeintureData.formatDa(item.subtotalDa(tintSupplement)),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                         Spacer(Modifier.height(8.dp))
@@ -288,22 +333,22 @@ fun CatalogueOrderScreen(
                         Spacer(Modifier.height(14.dp))
                         Button(
                             onClick = {
+                                val shadeLine = if (selectedShade == null) "Blanc d'origine (+0 DA/kg)"
+                                else "${selectedShade.code} - ${selectedShade.name} (${selectedShade.supplementLabel})"
                                 val orderMsg = buildString {
                                     appendLine("🛒 NOUVELLE COMMANDE DZPEINTURE (APP ANDROID)")
                                     if (customerName.isNotBlank()) appendLine("• Client : $customerName")
                                     if (customerPhone.isNotBlank()) appendLine("• Tél : $customerPhone")
                                     appendLine("• Mode : $deliveryMode")
-                                    if (selectedShade != null) {
-                                        appendLine("• Teinte : ${selectedShade.name} (${selectedShade.code})")
-                                    }
+                                    appendLine("• Couleur : $shadeLine")
                                     appendLine("")
                                     appendLine("Produits :")
-                                    cart.values.filter { it.subtotalDa > 0 }.forEach { item ->
+                                    cart.values.filter { it.subtotalDa(tintSupplement) > 0 }.forEach { item ->
                                         val q = buildList {
-                                            if (item.buckets > 0) add("${item.buckets} seau(x) ${item.product.bucketWeightKg}kg")
+                                            if (item.buckets > 0) add("${item.buckets} pot(s) ${item.product.bucketWeightKg}kg")
                                             if (item.extraKg > 0) add("${item.extraKg} kg")
                                         }.joinToString(" + ")
-                                        appendLine("- ${item.product.name} : $q = ${DzPeintureData.formatDa(item.subtotalDa)}")
+                                        appendLine("- ${item.product.name} : $q = ${DzPeintureData.formatDa(item.subtotalDa(tintSupplement))}")
                                     }
                                     appendLine("")
                                     appendLine("➡️ TOTAL : ${DzPeintureData.formatDa(totalDa)}")

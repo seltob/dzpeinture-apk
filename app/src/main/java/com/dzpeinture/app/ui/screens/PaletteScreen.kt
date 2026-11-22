@@ -91,7 +91,7 @@ fun PaletteScreen(
     onSelectShadeForOrder: (PaintShade) -> Unit
 ) {
     val context = LocalContext.current
-    var activeSource by remember { mutableStateOf(PaletteSource.NCS) }
+    var activeSource by remember { mutableStateOf(PaletteSource.TENDANCES) }
     var activeFilter by remember { mutableStateOf("Toutes") }
     var searchQuery by remember { mutableStateOf("") }
     var previewShade by remember { mutableStateOf<PaintShade?>(null) }
@@ -420,9 +420,10 @@ fun PaletteScreen(
                             color = DzNavy
                         )
                         Text(
-                            text = "Préparée sur place en 3 min dans nos 3 magasins DZpeinture.",
+                            text = "Supplément teinte (finitions) : ${shade.supplementLabel}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            fontWeight = FontWeight.SemiBold,
+                            color = DzEmerald
                         )
                         Spacer(Modifier.height(12.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -82,7 +82,8 @@ fun DzPeintureApp() {
     val scope = rememberCoroutineScope()
 
     var currentTab by remember { mutableIntStateOf(0) }
-    var selectedShade by remember { mutableStateOf<PaintShade?>(DzPeintureData.shades.first()) }
+    var selectedShade by remember { mutableStateOf<PaintShade?>(null) }
+    var returnTabAfterPalette by remember { mutableIntStateOf(3) }
     val cart = remember { mutableStateMapOf<String, CartEntry>() }
 
     val totalCartItems = cart.values.sumOf { it.buckets + (if (it.extraKg > 0) 1 else 0) }
@@ -182,18 +183,25 @@ fun DzPeintureApp() {
             when (currentTab) {
                 0 -> DevisScreen(
                     selectedShade = selectedShade,
-                    onAddQuoteToCart = { packs ->
-                        packs.forEach { pack ->
-                            val existing = cart[pack.product.id]
-                            cart[pack.product.id] = CartEntry(
-                                product = pack.product,
-                                buckets = (existing?.buckets ?: 0) + pack.bucketsCount,
-                                extraKg = (existing?.extraKg ?: 0) + pack.extraKgCount
-                            )
+                    onOpenPalette = {
+                        returnTabAfterPalette = 0
+                        currentTab = 1
+                    },
+                    onResetToWhite = { selectedShade = null },
+                    onAddMethodToCart = { method ->
+                        cart.clear()
+                        method.lines.forEach { line ->
+                            if (line.bucketsCount > 0 || line.extraKgCount > 0) {
+                                cart[line.product.id] = CartEntry(
+                                    product = line.product,
+                                    buckets = line.bucketsCount,
+                                    extraKg = line.extraKgCount
+                                )
+                            }
                         }
                         currentTab = 3
                         scope.launch {
-                            snackbarHostState.showSnackbar("Devis ajouté au panier !")
+                            snackbarHostState.showSnackbar("${method.title} ajoutée au panier !")
                         }
                     },
                     onSendWhatsApp = ::openWhatsApp
@@ -203,9 +211,9 @@ fun DzPeintureApp() {
                     selectedShade = selectedShade,
                     onSelectShadeForOrder = { shade ->
                         selectedShade = shade
-                        currentTab = 3
+                        currentTab = returnTabAfterPalette
                         scope.launch {
-                            snackbarHostState.showSnackbar("Teinte ${shade.name} sélectionnée !")
+                            snackbarHostState.showSnackbar("Teinte ${shade.code} (${shade.supplementLabel}) sélectionnée !")
                         }
                     }
                 )
@@ -221,6 +229,11 @@ fun DzPeintureApp() {
                 3 -> CatalogueOrderScreen(
                     cart = cart,
                     selectedShade = selectedShade,
+                    onOpenPalette = {
+                        returnTabAfterPalette = 3
+                        currentTab = 1
+                    },
+                    onResetToWhite = { selectedShade = null },
                     onUpdateCart = { product, buckets, extraKg ->
                         if (buckets <= 0 && extraKg <= 0) {
                             cart.remove(product.id)

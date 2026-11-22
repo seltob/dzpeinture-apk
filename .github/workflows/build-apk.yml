@@ -42,13 +42,13 @@ jobs:
       - name: Publier le lien direct de téléchargement (GitHub Release)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v4.0.0
-          name: DZpeinture v4.0.0 (Android APK)
+          tag_name: v5.0.0
+          name: DZpeinture v5.0.0 (Android APK)
           body: |
-            Application Android officielle **DZpeinture** (Alger : Oued Romane • Chéraga • Bachdjerrah).
-            - Calculateur de Devis exact (Seaux 18/20 kg + détail 1 kg)
-            - Nuancier complet : **3 820 teintes officielles du site dzp.paintingsoft.com (LEOMIX)** + **105 codes NCS** + **30 Tendances** + Simulateur photo mur
-            - Annuaire Peintres Pro Vérifiés DZpeinture avec Étoiles ★, Avis & Inscription gratuite
-            - Commande directe WhatsApp & Appel + GPS 3 magasins
+            Application Android officielle **DZpeinture V5.0.0** (Alger : Oued Romane • Chéraga • Bachdjerrah).
+            - 8 produits officiels (dont Enduit de Charge Préparé 20 kg & Enduit Finition 20 kg)
+            - Devis 3 méthodes pro (Générale, Retouche, Repeinturé) avec vrais rendements (couches incluses) & GRIP FOND obligatoire en Phase 1
+            - Palette 3 955 teintes (Tendances NCS & LEOMIX, Code NCS, Nuancier Site) + supplément couleur (+200 à +1 000 DA/kg) dans Devis & Panier
+            - Annuaire Peintres Pro Vérifiés avec notation obligatoire 1 à 5 ★ sous le commentaire
           files: DZpeinture.apk
           make_latest: true
